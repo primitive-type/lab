@@ -120,6 +120,29 @@ describe('CLI', function () {
         });
     });
 
+    it('displays a domain\'s error stack (-D)', function (done) {
+
+        var cli = ChildProcess.spawn('node', [labPath, 'test/cli_throws/debug.js', '--debug']);
+        var outData = '';
+        var errData = '';
+
+        cli.stdout.on('data', function (data) {
+
+            outData += data;
+        });
+
+        cli.stderr.on('data', function (data) {
+
+            errData += data;
+        });
+
+        cli.once('close', function (code) {
+
+            expect(code).to.not.equal(0);
+            done();
+        });
+    });
+
     it('shows the help (-h)', function (done) {
 
         var cli = ChildProcess.spawn('node', [labPath,'-h']);
@@ -733,6 +756,54 @@ describe('CLI', function () {
 
             output += data;
             expect(data).to.not.exist();
+        });
+
+        cli.once('close', function (code, signal) {
+
+            expect(code).to.equal(0);
+            expect(signal).to.not.exist();
+            expect(output).to.contain('1 tests complete');
+            done();
+        });
+    });
+
+    it('uses transforms to run a test file that has to be transformed', function (done) {
+
+        var cli = ChildProcess.spawn('node', [labPath, '-T', 'test/transform/exclude/lab-transform', 'test/transform/exclude/ext-test.new.js']);
+        var output = '';
+
+        cli.stdout.on('data', function (data) {
+
+            output += data;
+        });
+
+        cli.stderr.on('data', function (data) {
+
+            output += data;
+        });
+
+        cli.once('close', function (code, signal) {
+
+            expect(code).to.equal(0);
+            expect(signal).to.not.exist();
+            expect(output).to.contain('1 tests complete');
+            done();
+        });
+    });
+
+    it('uses transforms to run a test file that has to be transformed with coverage support', function (done) {
+
+        var cli = ChildProcess.spawn('node', [labPath, '-c', '-T', 'test/transform/exclude/lab-transform', 'test/transform/exclude/ext-test.new.js']);
+        var output = '';
+
+        cli.stdout.on('data', function (data) {
+
+            output += data;
+        });
+
+        cli.stderr.on('data', function (data) {
+
+            output += data;
         });
 
         cli.once('close', function (code, signal) {

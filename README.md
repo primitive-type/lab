@@ -19,6 +19,7 @@ global manipulation. Our goal with **lab** is to keep the execution engine as si
 - `-c`, `--coverage` - enables code coverage analysis.
 - `-C`, `--colors` - enables or disables color output. Defaults to console capabilities.
 - `-d`, `--dry` - dry run. Skips all tests. Use with `-v` to generate a test catalog. Defaults to `false`.
+- `-D`, `--debug` - print the stack during a domain error event.
 - `-e`, `--environment` - value to set the `NODE_ENV` environment variable to, defaults to 'test'.
 - `-f`, `--flat` - do not perform a recursive load of test files within the test directory.
 - `-g`, `--grep` - only run tests matching the given pattern which is internally compiled to a RegExp.
@@ -30,6 +31,7 @@ global manipulation. Our goal with **lab** is to keep the execution engine as si
 - `-m`, `--timeout` - individual tests timeout in milliseconds (zero disables timeout). Defaults to 2 seconds.
 - `-M`, `--context-timeout` - default timeouts for before, after, beforeEach and afterEach in milliseconds. Disabled by default.
 - `-n`, `--linter` - specify linting program; default is `eslint`.
+- `--lint-options` - specify options to pass to linting program. It must be a string that is JSON.parse(able).
 - `-o`, `--output` - file to write the report to, otherwise sent to stdout.
 - `-p`, `--parallel` - sets parallel execution as default test option. Defaults to serial execution.
 - `-r`, `--reporter` - the reporter used to generate the test results. Defaults to `console`. Options are:
@@ -40,10 +42,11 @@ global manipulation. Our goal with **lab** is to keep the execution engine as si
     - `tap` - TAP protocol report.
     - `lcov` - output to [lcov](http://ltp.sourceforge.net/coverage/lcov/geninfo.1.php) format.
     - `clover` - output results in [Clover XML](https://confluence.atlassian.com/display/CLOVER) format.
+    - [Custom Reporters](#custom-reporters) - See Below
 - `-s`, `--silence` - silence test output, defaults to false.
 - `-S`, `--sourcemaps` - enables sourcemap support for stack traces and code coverage, disabled by default.
 - `-t`, `--threshold` - minimum code test coverage percentage (sets `-c`), defaults to 100%.
-- `-T`, `--transform` - javascript file that exports an array of objects ie. `[ { ext: ".js", transform: function (content) { ... } } ]`. Note that if you use this option with -c (--coverage), then you must generate sourcemaps and pass sourcemaps option to get proper line numbers.
+- `-T`, `--transform` - javascript file that exports an array of objects ie. `[ { ext: ".js", transform: function (content, filename) { ... } } ]`. Note that if you use this option with -c (--coverage), then you must generate sourcemaps and pass sourcemaps option to get proper line numbers.
 - `-v`, `--verbose` - verbose test output, defaults to false.
 - `-a`, `--assert` - name of assert library to use.
 
@@ -79,7 +82,7 @@ lab.test('returns true when 1 + 1 equals 2', function (done) {
 ```
 
 When a test is completed, `done(err)` must be called, otherwise the test will time out (2 seconds by default) and will fail.
-The test passes if `done()` is call once before the timeout, no exception thrown, and no arguments are passed to `done()`.
+The test passes if `done()` is called once before the timeout, no exception thrown, and no arguments are passed to `done()`.
 If no callback function is provided, the test is considered a TODO reminder and will be skipped.
 
 Tests can be organized into experiments:
@@ -204,11 +207,16 @@ To use source transforms, you must specify a file that tells Lab how to do the t
 var Babel = require('babel-core');
 
 module.exports = [
-  {ext: '.js', transform: function (content) {
+    {ext: '.js', transform: function (content, filename) {
 
-    var result = Babel.transform(content, { sourceMap: 'inline', ast: false});
-      return result.code;
-  }}
+        // Make sure to only transform your code or the dependencies you want
+        if (filename.indexOf('node_modules') === -1) {
+          var result = Babel.transform(content, { sourceMap: 'inline', filename: filename, sourceFileName: filename });
+          return result.code;
+        }
+
+        return content;
+    }}
 ];
 ```
 
@@ -260,6 +268,16 @@ file to figure out where coverage is lacking.
 ```bash
 $ npm test
 ```
+
+## Custom Reporters
+
+If the value passed for `reporter` isn't included with Lab, it is loaded from the filesystem.
+If the string starts with a period (`'./custom-reporter'`), it will be loaded relative to the current working directory.
+If it doesn't start with a period (`'custom-reporter'`), it will be loaded from the `node_modules` directory, just like any module installed using `npm install`.
+
+Reporters must be a class with the following methods: `start`, `test` and `end`. `options` are passed to the class constructor upon initialization.
+
+See the [json reporter](lib/reporters/json.js) for a good starting point.
 
 ## Acknowledgements
 
